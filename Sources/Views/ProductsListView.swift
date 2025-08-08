@@ -12,7 +12,7 @@ struct ProductsListView: View {
             List {
                 ForEach(products) { product in
                     NavigationLink(value: product.id) {
-                      ProductRow(product: product, currencyCode: settings.first?.currency.rawValue ?? "COP")
+                        ProductRow(product: product, currencyCode: settings.first?.currency.rawValue ?? "COP")
                     }
                 }
                 .onDelete(perform: delete)

@@ -10,7 +10,6 @@ struct AppLifecycleViewModifier: ViewModifier {
         content
             .task {
                 await NotificationService.requestAuthorization()
-                BackgroundRefreshScheduler.register()
                 BackgroundRefreshScheduler.schedule()
                 await rescheduleNotifications()
                 ensureSettingsExists()
