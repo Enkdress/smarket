@@ -12,7 +12,7 @@ struct ProductsListView: View {
             List {
                 ForEach(products) { product in
                     NavigationLink(value: product.id) {
-                        ProductRow(product: product)
+                      ProductRow(product: product, currencyCode: settings.first?.currency.rawValue ?? "COP")
                     }
                 }
                 .onDelete(perform: delete)
@@ -42,6 +42,7 @@ struct ProductsListView: View {
 
 private struct ProductRow: View {
     let product: Product
+    let currencyCode: String
 
     var body: some View {
         HStack {
@@ -61,7 +62,7 @@ private struct ProductRow: View {
         let number = NSNumber(value: value)
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = settings.first?.currency.rawValue ?? "COP"
+        formatter.currencyCode = currencyCode
         return formatter.string(from: number) ?? "—"
     }
 }

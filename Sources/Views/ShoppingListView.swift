@@ -2,14 +2,16 @@ import SwiftUI
 import SwiftData
 
 struct ShoppingListView: View {
-    @Query(sort: \Product.nextRunOutDate) private var products: [Product]
+    @Query(sort: \Product.name) private var products: [Product]
 
     var dueSoon: [Product] {
         let now = Calendar.current.startOfDay(for: .now)
-        return products.filter { product in
-            let days = Calendar.current.dateComponents([.day], from: now, to: product.nextRunOutDate).day ?? 0
-            return days <= 2
-        }
+      let filtered = products.filter { product in
+        let days = Calendar.current.dateComponents([.day], from: now, to: product.nextRunOutDate).day ?? 0
+        return days <= 2
+      }
+      
+      return filtered.sorted { $0.nextRunOutDate < $1.nextRunOutDate }
     }
 
     var body: some View {
