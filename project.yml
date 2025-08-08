@@ -1,0 +1,32 @@
+name: Smarket
+options:
+  developmentLanguage: en
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    PRODUCT_NAME: Smarket
+    PRODUCT_BUNDLE_IDENTIFIER: com.smarket.app
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    SWIFT_VERSION: 5.9
+    CODE_SIGN_STYLE: Automatic
+targets:
+  Smarket:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Smarket
+        CFBundleName: Smarket
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.smarket.app.refresh
+    sources:
+      - path: Sources
+    scheme:
+      testTargets: []
+
