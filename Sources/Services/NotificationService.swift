@@ -31,7 +31,7 @@ enum NotificationService {
 
             let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
             let request = UNNotificationRequest(identifier: product.id.uuidString, content: content, trigger: trigger)
-            await center.add(request)
+            try? await center.add(request)
         }
     }
 
@@ -59,7 +59,7 @@ enum NotificationService {
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: "budget-alert", content: content, trigger: trigger)
-        await UNUserNotificationCenter.current().add(request)
+        try? await UNUserNotificationCenter.current().add(request)
 
         settings.lastBudgetAlertAt = Date()
     }

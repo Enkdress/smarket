@@ -33,25 +33,28 @@ enum BackgroundRefreshScheduler {
 final class NotificationRescheduleOperation: Operation {
     override func main() {
         guard !isCancelled else { return }
-        let container = try? ModelContainer(for: Product.self, AppSettings.self)
-        guard let container else { return }
-        let context = container.mainContext
 
-        let fetchProducts = FetchDescriptor<Product>()
-        let products = (try? context.fetch(fetchProducts)) ?? []
-        let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first ?? AppSettings()
+        let semaphore = DispatchSemaphore(value: 0)
+        Task { @MainActor in
+            do {
+                let container = try ModelContainer(for: Product.self, AppSettings.self)
+                let context = container.mainContext
 
-        let sema = DispatchSemaphore(value: 0)
-        Task {
-            await NotificationService.scheduleHeadsUpNotifications(
-                for: products,
-                headsUpDays: settings.headsUpDays,
-                reminderHour: settings.reminderHour,
-                currencyCode: settings.currency.rawValue
-            )
-            sema.signal()
+                let products = try context.fetch(FetchDescriptor<Product>())
+                let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first ?? AppSettings()
+
+                await NotificationService.scheduleHeadsUpNotifications(
+                    for: products,
+                    headsUpDays: settings.headsUpDays,
+                    reminderHour: settings.reminderHour,
+                    currencyCode: settings.currency.rawValue
+                )
+            } catch {
+                // Ignore background refresh errors
+            }
+            semaphore.signal()
         }
-        sema.wait()
+        semaphore.wait()
     }
 }
 
