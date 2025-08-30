@@ -1,0 +1,140 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { StorageService } from '../../lib/storage';
+import { formatCurrency, getDailyCost, getMonthlyCostEstimate, getNextRunOutDate, getDaysUntilRunOut, formatDate } from '../../lib/utils';
+import { categoryIcons, categoryColors } from '../../types/models';
+
+const { id } = Astro.params;
+
+// Get the product
+const product = StorageService.getProduct(id as string);
+const settings = StorageService.getSettings();
+
+// Redirect to home if product not found
+if (!product) {
+  return Astro.redirect('/');
+}
+
+const nextRunOutDate = getNextRunOutDate(product);
+const daysUntilRunOut = getDaysUntilRunOut(product);
+const dailyCost = getDailyCost(product);
+const monthlyCost = getMonthlyCostEstimate(product);
+const categoryColor = categoryColors[product.category];
+---
+
+<Layout title={product.name}>
+  <div class="max-w-2xl mx-auto px-4 py-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <!-- Header -->
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <span class="text-4xl">{categoryIcons[product.category]}</span>
+          <div>
+            <h2 class="text-2xl font-bold">{product.name}</h2>
+            <span class={`inline-block mt-1 px-3 py-1 text-sm font-medium bg-category-${categoryColor} text-category-${categoryColor} border-category-${categoryColor} border rounded-full`}>
+              {product.category}
+            </span>
+          </div>
+        </div>
+        
+        <a
+          href={`/product/edit/${product.id}`}
+          class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          title="Edit product"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </a>
+      </div>
+      
+      <!-- Status -->
+      <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Next run out</p>
+            <p class="text-lg font-semibold">
+              {daysUntilRunOut < 0 ? (
+                <span class="text-red-600">Overdue</span>
+              ) : daysUntilRunOut === 0 ? (
+                <span class="text-red-600">Today</span>
+              ) : daysUntilRunOut === 1 ? (
+                <span class="text-orange-600">Tomorrow</span>
+              ) : (
+                <span class="text-gray-900">In {daysUntilRunOut} days</span>
+              )}
+            </p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Run out date</p>
+            <p class="text-lg font-semibold">{formatDate(nextRunOutDate)}</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Details -->
+      <div class="space-y-4">
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Price</span>
+          <span class="font-semibold">{formatCurrency(product.priceLatest, settings.currency)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Lasts for</span>
+          <span class="font-semibold">{product.lastsDays} {product.lastsDays === 1 ? 'day' : 'days'}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Last purchased</span>
+          <span class="font-semibold">{formatDate(product.lastPurchasedAt)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Daily cost</span>
+          <span class="font-semibold">{formatCurrency(dailyCost, settings.currency)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Monthly estimate</span>
+          <span class="font-semibold">{formatCurrency(monthlyCost, settings.currency)}</span>
+        </div>
+        
+        {product.notes && (
+          <div class="py-3">
+            <p class="text-gray-600 mb-2">Notes</p>
+            <p class="text-gray-900">{product.notes}</p>
+          </div>
+        )}
+      </div>
+      
+      <!-- Actions -->
+      <div class="mt-6 space-y-3">
+        <button
+          id="markPurchasedBtn"
+          class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Mark as Purchased Today
+        </button>
+        
+        <a
+          href="/"
+          class="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors text-center"
+        >
+          Back to Products
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ productId: product.id }}>
+  document.getElementById('markPurchasedBtn')?.addEventListener('click', () => {
+    import('../../lib/storage').then(({ StorageService }) => {
+      StorageService.markProductPurchased(productId);
+      window.location.reload();
+    });
+  });
+</script>

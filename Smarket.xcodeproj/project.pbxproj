@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -138,8 +138,6 @@
 			dependencies = (
 			);
 			name = Smarket;
-			packageProductDependencies = (
-			);
 			productName = Smarket;
 			productReference = 58F92CD3D853565F48A5918E /* Smarket.app */;
 			productType = "com.apple.product-type.application";
@@ -167,7 +165,6 @@
 				en,
 			);
 			mainGroup = 1320A6A942E773BD6CEF2ED1;
-			minimizedProjectReferenceProxies = 1;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -274,14 +271,11 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = M2GGYGX667;
 				INFOPLIST_FILE = Sources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Smarket;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.smarket-personal.app";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -295,14 +289,11 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = M2GGYGX667;
 				INFOPLIST_FILE = Sources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Smarket;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.smarket-personal.app";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

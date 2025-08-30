@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Custom color utilities for categories */
+.text-category-green { @apply text-green-600; }
+.bg-category-green { @apply bg-green-100; }
+.border-category-green { @apply border-green-300; }
+
+.text-category-blue { @apply text-blue-600; }
+.bg-category-blue { @apply bg-blue-100; }
+.border-category-blue { @apply border-blue-300; }
+
+.text-category-orange { @apply text-orange-600; }
+.bg-category-orange { @apply bg-orange-100; }
+.border-category-orange { @apply border-orange-300; }
+
+.text-category-pink { @apply text-pink-600; }
+.bg-category-pink { @apply bg-pink-100; }
+.border-category-pink { @apply border-pink-300; }
+
+.text-category-red { @apply text-red-600; }
+.bg-category-red { @apply bg-red-100; }
+.border-category-red { @apply border-red-300; }
+
+.text-category-amber { @apply text-amber-600; }
+.bg-category-amber { @apply bg-amber-100; }
+.border-category-amber { @apply border-amber-300; }
+
+.text-category-cyan { @apply text-cyan-600; }
+.bg-category-cyan { @apply bg-cyan-100; }
+.border-category-cyan { @apply border-cyan-300; }
+
+.text-category-gray { @apply text-gray-600; }
+.bg-category-gray { @apply bg-gray-100; }
+.border-category-gray { @apply border-gray-300; }
+
+/* Custom animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}

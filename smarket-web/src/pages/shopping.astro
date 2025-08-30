@@ -1,0 +1,245 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { StorageService } from '../lib/storage';
+import { formatCurrency, getProductStatus, sortProductsByDueDate, sortProductsByCategory, getMonthlyCostEstimate, formatShortDate, getNextRunOutDate } from '../lib/utils';
+import { categoryIcons } from '../types/models';
+import type { Product } from '../types/models';
+
+// Get data
+const products = StorageService.getProducts();
+const settings = StorageService.getSettings();
+
+// Filter products due soon
+const dueSoonProducts = products.filter(product => {
+  const status = getProductStatus(product, settings.headsUpDays);
+  return status === 'overdue' || status === 'today' || status === 'tomorrow' || status === 'soon';
+});
+
+// Sort by due date
+const sortedProducts = sortProductsByDueDate(dueSoonProducts);
+
+// Calculate totals
+const tripSubtotal = dueSoonProducts.reduce((sum, product) => sum + product.priceLatest, 0);
+const totalMonthly = products.reduce((sum, product) => sum + getMonthlyCostEstimate(product), 0);
+
+// Group products by status
+const groupedProducts: { 
+  overdue: Product[], 
+  today: Product[], 
+  tomorrow: Product[], 
+  soon: Product[] 
+} = {
+  overdue: [],
+  today: [],
+  tomorrow: [],
+  soon: []
+};
+
+dueSoonProducts.forEach(product => {
+  const status = getProductStatus(product, settings.headsUpDays);
+  if (status === 'overdue') groupedProducts.overdue.push(product);
+  else if (status === 'today') groupedProducts.today.push(product);
+  else if (status === 'tomorrow') groupedProducts.tomorrow.push(product);
+  else if (status === 'soon') groupedProducts.soon.push(product);
+});
+
+// Sort each group by category
+Object.keys(groupedProducts).forEach(key => {
+  groupedProducts[key as keyof typeof groupedProducts] = sortProductsByCategory(groupedProducts[key as keyof typeof groupedProducts]);
+});
+---
+
+<Layout title="Shopping List">
+  <div class="max-w-4xl mx-auto px-4 py-6">
+    {dueSoonProducts.length === 0 ? (
+      <div class="text-center py-12">
+        <div class="text-green-500 mb-4">
+          <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-1">All set!</h3>
+        <p class="text-gray-500">Nothing due in the next {settings.headsUpDays} days</p>
+      </div>
+    ) : (
+      <>
+        <!-- Trip Summary -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h3 class="text-lg font-semibold mb-4">Trip Summary</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">Items</span>
+              <span class="font-semibold">{dueSoonProducts.length}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">Subtotal</span>
+              <span class="font-semibold">{formatCurrency(tripSubtotal, settings.currency)}</span>
+            </div>
+            {settings.budgetEnabled && settings.budgetAmount > 0 && (
+              <div class="flex justify-between items-center pt-3 border-t">
+                <span class="text-gray-600">Budget remaining</span>
+                <span class={`font-semibold ${(settings.budgetAmount - totalMonthly) >= 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {formatCurrency(settings.budgetAmount - totalMonthly, settings.currency)}
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <button
+            id="markAllBtn"
+            class="w-full mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Mark All as Purchased
+          </button>
+        </div>
+        
+        <!-- Products by status -->
+        {groupedProducts.overdue.length > 0 && (
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3 text-red-600">Overdue</h3>
+            <div class="space-y-2">
+              {groupedProducts.overdue.map(product => (
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">{categoryIcons[product.category]}</span>
+                      <div>
+                        <h4 class="font-semibold">{product.name}</h4>
+                        <p class="text-sm text-gray-500">{formatShortDate(getNextRunOutDate(product))}</p>
+                      </div>
+                    </div>
+                    <button
+                      class="mark-single-btn p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      data-product-id={product.id}
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {groupedProducts.today.length > 0 && (
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Today</h3>
+            <div class="space-y-2">
+              {groupedProducts.today.map(product => (
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">{categoryIcons[product.category]}</span>
+                      <div>
+                        <h4 class="font-semibold">{product.name}</h4>
+                        <p class="text-sm text-gray-500">{formatShortDate(getNextRunOutDate(product))}</p>
+                      </div>
+                    </div>
+                    <button
+                      class="mark-single-btn p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      data-product-id={product.id}
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {groupedProducts.tomorrow.length > 0 && (
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Tomorrow</h3>
+            <div class="space-y-2">
+              {groupedProducts.tomorrow.map(product => (
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">{categoryIcons[product.category]}</span>
+                      <div>
+                        <h4 class="font-semibold">{product.name}</h4>
+                        <p class="text-sm text-gray-500">{formatShortDate(getNextRunOutDate(product))}</p>
+                      </div>
+                    </div>
+                    <button
+                      class="mark-single-btn p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      data-product-id={product.id}
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {groupedProducts.soon.length > 0 && (
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Soon</h3>
+            <div class="space-y-2">
+              {groupedProducts.soon.map(product => (
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="text-2xl">{categoryIcons[product.category]}</span>
+                      <div>
+                        <h4 class="font-semibold">{product.name}</h4>
+                        <p class="text-sm text-gray-500">{formatShortDate(getNextRunOutDate(product))}</p>
+                      </div>
+                    </div>
+                    <button
+                      class="mark-single-btn p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      data-product-id={product.id}
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+</Layout>
+
+<script define:vars={{ headsUpDays: settings.headsUpDays }}>
+  // Mark all as purchased
+  document.getElementById('markAllBtn')?.addEventListener('click', () => {
+    if (confirm('Mark all due items as purchased?')) {
+      import('../lib/storage').then(({ StorageService }) => {
+        StorageService.markAllDuePurchased(headsUpDays);
+        window.location.reload();
+      });
+    }
+  });
+  
+  // Mark individual items
+  document.querySelectorAll('.mark-single-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const button = e.currentTarget as HTMLButtonElement;
+      const productId = button.dataset.productId;
+      
+      if (productId) {
+        import('../lib/storage').then(({ StorageService }) => {
+          StorageService.markProductPurchased(productId);
+          window.location.reload();
+        });
+      }
+    });
+  });
+</script>

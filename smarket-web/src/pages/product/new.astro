@@ -1,0 +1,214 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { categorizeProduct } from '../../types/models';
+---
+
+<Layout title="Add Product">
+  <div class="max-w-2xl mx-auto px-4 py-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 class="text-2xl font-bold mb-6">Add Product</h2>
+      
+      <form id="productForm" class="space-y-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+            Product Name
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g., Milk, Bread, Shampoo"
+          />
+        </div>
+        
+        <div>
+          <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
+            Price
+          </label>
+          <input
+            type="number"
+            id="price"
+            name="price"
+            required
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="0.00"
+          />
+        </div>
+        
+        <div>
+          <label for="lastsDays" class="block text-sm font-medium text-gray-700 mb-1">
+            Lasts for (days)
+          </label>
+          <input
+            type="number"
+            id="lastsDays"
+            name="lastsDays"
+            required
+            min="1"
+            value="7"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="text-sm text-gray-500 mt-1">How many days until you need to buy it again</p>
+        </div>
+        
+        <div>
+          <label for="lastPurchasedAt" class="block text-sm font-medium text-gray-700 mb-1">
+            Last Purchased
+          </label>
+          <input
+            type="date"
+            id="lastPurchasedAt"
+            name="lastPurchasedAt"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        
+        <div>
+          <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">
+            Notes (optional)
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Any additional notes..."
+          ></textarea>
+        </div>
+        
+        <div class="flex gap-3 pt-4">
+          <button
+            type="submit"
+            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Save Product
+          </button>
+          <a
+            href="/"
+            class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-center"
+          >
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Constants
+  const STORAGE_KEY = 'smarket_products';
+  
+  // Auto-categorize function
+  function categorizeProduct(productName) {
+    const lowercased = productName.toLowerCase().trim();
+    
+    // Beverages
+    const beverageKeywords = ["milk", "juice", "water", "coffee", "tea", "soda", "beer", "wine", "drink", "beverage", "cola", "latte", "smoothie", "coconut water", "sparkling", "bottle"];
+    if (beverageKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Beverages';
+    }
+    
+    // Food
+    const foodKeywords = ["bread", "rice", "pasta", "meat", "egg", "cheese", "fruit", "vegetable", "food", "chicken", "beef", "fish", "cereal", "flour", "sugar", "salt", "oil", "butter", "yogurt", "apple", "banana", "tomato", "onion", "potato", "nuts", "beans", "honey", "sauce"];
+    if (foodKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Food';
+    }
+    
+    // Household
+    const householdKeywords = ["toilet", "paper", "towel", "battery", "bulb", "tissue", "napkin", "candle", "lightbulb", "foil", "wrap", "bag", "garbage", "trash"];
+    if (householdKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Household';
+    }
+    
+    // Personal Care
+    const personalCareKeywords = ["shampoo", "soap", "toothpaste", "deodorant", "lotion", "conditioner", "body wash", "moisturizer", "sunscreen", "toothbrush", "razor", "makeup", "perfume", "nail"];
+    if (personalCareKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Personal Care';
+    }
+    
+    // Health
+    const healthKeywords = ["vitamin", "medicine", "pill", "tablet", "supplement", "aspirin", "bandage", "first aid", "thermometer", "prescription"];
+    if (healthKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Health';
+    }
+    
+    // Pet Supplies
+    const petKeywords = ["dog", "cat", "pet", "puppy", "kitten", "leash", "collar", "litter", "cage", "carrier", "treats", "paw"];
+    if (petKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Pet Supplies';
+    }
+    
+    // Cleaning
+    const cleaningKeywords = ["clean", "detergent", "bleach", "disinfectant", "sanitizer", "wipes", "scrub", "mop", "vacuum", "polish", "laundry", "fabric softener"];
+    if (cleaningKeywords.some(keyword => lowercased.includes(keyword))) {
+      return 'Cleaning';
+    }
+    
+    return 'Other';
+  }
+  
+  // Set today's date as default
+  const dateInput = document.getElementById('lastPurchasedAt');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+  
+  // Handle form submission
+  const form = document.getElementById('productForm');
+  
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const name = formData.get('name');
+      const price = parseFloat(formData.get('price'));
+      const lastsDays = parseInt(formData.get('lastsDays'));
+      const lastPurchasedAt = new Date(formData.get('lastPurchasedAt'));
+      const notes = formData.get('notes');
+      
+      // Auto-categorize the product
+      const category = categorizeProduct(name);
+      
+      // Create product object
+      const product = {
+        id: crypto.randomUUID(),
+        name,
+        priceLatest: price,
+        lastsDays,
+        lastPurchasedAt: lastPurchasedAt.toISOString(),
+        notes: notes || undefined,
+        category
+      };
+      
+      // Get existing products
+      let products = [];
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          products = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Error loading products:', e);
+      }
+      
+      // Add new product
+      products.push(product);
+      
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+      
+      console.log('Product saved:', product);
+      console.log('All products:', products);
+      
+      // Redirect to products list
+      window.location.href = '/';
+    });
+  }
+</script>

@@ -1,0 +1,323 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { ProductCategory } from '../types/models';
+---
+
+<Layout title="Products">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Header with filters and add button -->
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold">Products</h2>
+      <a
+        href="/product/new"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add Product
+      </a>
+    </div>
+
+    <!-- Filter controls -->
+    <div class="mb-4 flex gap-2 flex-wrap">
+      <select
+        id="categoryFilter"
+        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">All Categories</option>
+        {Object.values(ProductCategory).map(category => (
+          <option value={category}>{category}</option>
+        ))}
+      </select>
+      
+      <select
+        id="statusFilter"
+        class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="all">All Products</option>
+        <option value="dueSoon">Due Soon</option>
+      </select>
+      
+      <input
+        type="search"
+        id="searchInput"
+        placeholder="Search products..."
+        class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <!-- Products list -->
+    <div id="productsList" class="space-y-2">
+      <!-- Content will be loaded client-side -->
+      <div id="loadingState" class="text-center py-12">
+        <div class="text-gray-400 mb-4">
+          <svg class="w-16 h-16 mx-auto animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-1">Loading products...</h3>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Constants
+  const STORAGE_KEYS = {
+    PRODUCTS: 'smarket_products',
+    SETTINGS: 'smarket_settings'
+  };
+
+  const categoryIcons = {
+    'Food': '🍴',
+    'Beverages': '☕',
+    'Household': '🏠',
+    'Personal Care': '👤',
+    'Health': '🏥',
+    'Pet Supplies': '🐾',
+    'Cleaning': '🧹',
+    'Other': '❓'
+  };
+
+  // Utility functions
+  function getProducts() {
+    const stored = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (!stored) return [];
+    
+    try {
+      const products = JSON.parse(stored);
+      // Convert date strings back to Date objects
+      return products.map(p => ({
+        ...p,
+        lastPurchasedAt: new Date(p.lastPurchasedAt)
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  function getSettings() {
+    const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (!stored) return { currency: 'COP', headsUpDays: 2 };
+    
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { currency: 'COP', headsUpDays: 2 };
+    }
+  }
+
+  function getNextRunOutDate(product) {
+    const purchaseDate = new Date(product.lastPurchasedAt);
+    const runOutDate = new Date(purchaseDate);
+    runOutDate.setDate(runOutDate.getDate() + product.lastsDays);
+    return runOutDate;
+  }
+
+  function getDaysUntilRunOut(product) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const runOutDate = getNextRunOutDate(product);
+    runOutDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = runOutDate.getTime() - now.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  function getMonthlyCostEstimate(product) {
+    const dailyCost = product.lastsDays > 0 ? product.priceLatest / product.lastsDays : 0;
+    return dailyCost * 30;
+  }
+
+  function formatCurrency(amount, currency) {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    
+    return formatter.format(amount);
+  }
+
+  function getProductStatus(product, headsUpDays) {
+    const days = getDaysUntilRunOut(product);
+    
+    if (days < 0) return 'overdue';
+    if (days === 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    if (days <= headsUpDays) return 'soon';
+    return 'ok';
+  }
+
+  function getStatusLabel(days) {
+    if (days < 0) return 'Overdue';
+    if (days === 0) return 'Due today';
+    if (days === 1) return 'Due tomorrow';
+    return `In ${days} days`;
+  }
+
+  function markProductPurchased(productId) {
+    const products = getProducts();
+    const index = products.findIndex(p => p.id === productId);
+    
+    if (index !== -1) {
+      products[index].lastPurchasedAt = new Date();
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+      loadProducts(); // Reload the list
+    }
+  }
+
+  // Load and render products
+  function loadProducts() {
+    const products = getProducts();
+    const settings = getSettings();
+    const productsList = document.getElementById('productsList');
+    
+    if (!productsList) return;
+    
+    // Sort products by name
+    const sortedProducts = [...products].sort((a, b) => a.name.localeCompare(b.name));
+    
+    if (sortedProducts.length === 0) {
+      productsList.innerHTML = `
+        <div class="text-center py-12">
+          <div class="text-gray-400 mb-4">
+            <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-1">No products</h3>
+          <p class="text-gray-500">Add your first product to get started</p>
+        </div>
+      `;
+      return;
+    }
+    
+    productsList.innerHTML = sortedProducts.map(product => {
+      const days = getDaysUntilRunOut(product);
+      const status = getProductStatus(product, settings.headsUpDays);
+      const statusLabel = getStatusLabel(days);
+      
+      let statusBadge = '';
+      if (status === 'overdue' || status === 'today') {
+        statusBadge = '<span class="px-3 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Due</span>';
+      } else if (status === 'tomorrow' || status === 'soon') {
+        statusBadge = '<span class="px-3 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">Soon</span>';
+      }
+      
+      return `
+        <div
+          class="product-item bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+          data-category="${product.category}"
+          data-name="${product.name.toLowerCase()}"
+          data-status="${status}"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <span class="text-2xl flex-shrink-0">
+                ${categoryIcons[product.category] || '❓'}
+              </span>
+              
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-gray-900 truncate">
+                  <a href="/product/${product.id}" class="hover:text-blue-600">
+                    ${product.name}
+                  </a>
+                </h3>
+                <div class="text-sm text-gray-500 space-y-1">
+                  <div>${statusLabel}</div>
+                  <div>Monthly: ${formatCurrency(getMonthlyCostEstimate(product), settings.currency)}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              ${statusBadge}
+              
+              <button
+                class="mark-purchased-btn p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                data-product-id="${product.id}"
+                title="Mark as purchased today"
+                onclick="markProductPurchased('${product.id}')"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              
+              <a
+                href="/product/edit/${product.id}"
+                class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Edit product"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    // Set up event listeners after rendering
+    setupEventListeners();
+  }
+  
+  function setupEventListeners() {
+    // Filter controls
+    const categoryFilter = document.getElementById('categoryFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+    
+    function filterProducts() {
+      const productItems = document.querySelectorAll('.product-item');
+      const selectedCategory = categoryFilter.value;
+      const selectedStatus = statusFilter.value;
+      const searchTerm = searchInput.value.toLowerCase();
+      
+      productItems.forEach(item => {
+        const category = item.dataset.category || '';
+        const name = item.dataset.name || '';
+        const status = item.dataset.status || '';
+        
+        let show = true;
+        
+        // Category filter
+        if (selectedCategory && category !== selectedCategory) {
+          show = false;
+        }
+        
+        // Status filter
+        if (selectedStatus === 'dueSoon' && status !== 'overdue' && status !== 'today' && status !== 'tomorrow' && status !== 'soon') {
+          show = false;
+        }
+        
+        // Search filter
+        if (searchTerm && !name.includes(searchTerm)) {
+          show = false;
+        }
+        
+        item.style.display = show ? 'block' : 'none';
+      });
+    }
+    
+    if (categoryFilter) categoryFilter.addEventListener('change', filterProducts);
+    if (statusFilter) statusFilter.addEventListener('change', filterProducts);
+    if (searchInput) searchInput.addEventListener('input', filterProducts);
+  }
+  
+  // Load products when page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('Loading products...');
+    loadProducts();
+  });
+  
+  // Also load immediately in case DOMContentLoaded already fired
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    console.log('Loading products immediately...');
+    loadProducts();
+  }
+</script>

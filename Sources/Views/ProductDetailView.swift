@@ -7,12 +7,20 @@ struct ProductDetailView: View {
     @Query private var settings: [AppSettings]
     @State private var showingEdit = false
     @State private var priceInput: String = ""
+    @FocusState private var isPriceFieldFocused: Bool
 
     let product: Product
 
     var body: some View {
         Form {
             Section("Info") {
+                LabeledContent("Category") {
+                    HStack {
+                        Image(systemName: product.category.systemImage)
+                        Text(product.category.rawValue)
+                    }
+                    .foregroundStyle(.secondary)
+                }
                 LabeledContent("Last purchased", value: formatDate(product.lastPurchasedAt))
                 LabeledContent("Lasts", value: "\(product.lastsDays) days")
                 LabeledContent("Next run-out", value: formatDate(product.nextRunOutDate))
@@ -30,13 +38,27 @@ struct ProductDetailView: View {
             Section("Log purchase") {
                 TextField("Price", text: $priceInput)
                     .keyboardType(.decimalPad)
-                Button("Update to today") { logPurchase() }
-                    .buttonStyle(.borderedProminent)
+                    .focused($isPriceFieldFocused)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        isPriceFieldFocused = false
+                    }
+                Button("Update to today") { 
+                    logPurchase()
+                    isPriceFieldFocused = false
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
         .navigationTitle(product.name)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { Button("Edit") { showingEdit = true } }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isPriceFieldFocused = false
+                }
+            }
         }
         .sheet(isPresented: $showingEdit) {
             AddEditProductView(productToEdit: product)

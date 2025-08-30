@@ -14,9 +14,6 @@ struct SmarketApp: App {
             // Defer to the shared handler
             let mirror = BackgroundRefreshScheduler.self
             let selector = NSSelectorFromString("handle:")
-            if mirror.responds(to: selector) {
-                // no-op; keep for clarity
-            }
             // Call private handler directly
             let request = BGAppRefreshTaskRequest(identifier: BackgroundRefreshScheduler.taskIdentifier)
             _ = request // silence unused
