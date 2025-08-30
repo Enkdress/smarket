@@ -222,7 +222,7 @@ import { ProductCategory } from '../types/models';
               
               <div class="flex-1 min-w-0">
                 <h3 class="font-semibold text-gray-900 truncate">
-                  <a href="/product/${product.id}" class="hover:text-blue-600">
+                  <a href="/product/view?id=${product.id}" class="hover:text-blue-600">
                     ${product.name}
                   </a>
                 </h3>
@@ -248,7 +248,7 @@ import { ProductCategory } from '../types/models';
               </button>
               
               <a
-                href="/product/edit/${product.id}"
+                href="/product/edit?id=${product.id}"
                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Edit product"
               >

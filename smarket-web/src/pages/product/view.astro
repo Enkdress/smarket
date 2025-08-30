@@ -1,0 +1,274 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Product Details">
+  <div class="max-w-2xl mx-auto px-4 py-6">
+    <div id="productContent" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <!-- Content will be loaded client-side -->
+      <div class="text-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+        <p class="mt-4 text-gray-500">Loading product...</p>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Constants
+  const STORAGE_KEYS = {
+    PRODUCTS: 'smarket_products',
+    SETTINGS: 'smarket_settings'
+  };
+
+  const categoryIcons = {
+    'Food': '🍴',
+    'Beverages': '☕',
+    'Household': '🏠',
+    'Personal Care': '👤',
+    'Health': '🏥',
+    'Pet Supplies': '🐾',
+    'Cleaning': '🧹',
+    'Other': '❓'
+  };
+
+  const categoryColors = {
+    'Food': 'green',
+    'Beverages': 'blue',
+    'Household': 'orange',
+    'Personal Care': 'pink',
+    'Health': 'red',
+    'Pet Supplies': 'amber',
+    'Cleaning': 'cyan',
+    'Other': 'gray'
+  };
+
+  // Utility functions
+  function getProduct(id) {
+    const stored = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (!stored) return null;
+    
+    try {
+      const products = JSON.parse(stored);
+      return products.find(p => p.id === id) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getSettings() {
+    const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (!stored) return { currency: 'COP', headsUpDays: 2 };
+    
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { currency: 'COP', headsUpDays: 2 };
+    }
+  }
+
+  function getNextRunOutDate(product) {
+    const purchaseDate = new Date(product.lastPurchasedAt);
+    const runOutDate = new Date(purchaseDate);
+    runOutDate.setDate(runOutDate.getDate() + product.lastsDays);
+    return runOutDate;
+  }
+
+  function getDaysUntilRunOut(product) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const runOutDate = getNextRunOutDate(product);
+    runOutDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = runOutDate.getTime() - now.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  function getDailyCost(product) {
+    if (product.lastsDays <= 0) return 0;
+    return product.priceLatest / product.lastsDays;
+  }
+
+  function getMonthlyCostEstimate(product) {
+    return getDailyCost(product) * 30;
+  }
+
+  function formatDate(date) {
+    return new Date(date).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  }
+
+  function formatCurrency(amount, currency) {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    
+    return formatter.format(amount);
+  }
+
+  function markProductPurchased(productId) {
+    const stored = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (!stored) return;
+    
+    try {
+      const products = JSON.parse(stored);
+      const index = products.findIndex(p => p.id === productId);
+      
+      if (index !== -1) {
+        products[index].lastPurchasedAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        loadProduct(); // Reload the product
+      }
+    } catch (e) {
+      console.error('Error marking product as purchased:', e);
+    }
+  }
+
+  // Load product data
+  function loadProduct() {
+    // Get product ID from URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+    
+    if (!productId) {
+      document.getElementById('productContent').innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-red-600">No product ID provided</p>
+          <a href="/" class="mt-4 inline-block text-blue-600 hover:text-blue-700">Back to Products</a>
+        </div>
+      `;
+      return;
+    }
+    
+    const product = getProduct(productId);
+    const settings = getSettings();
+    
+    if (!product) {
+      document.getElementById('productContent').innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-red-600">Product not found</p>
+          <a href="/" class="mt-4 inline-block text-blue-600 hover:text-blue-700">Back to Products</a>
+        </div>
+      `;
+      return;
+    }
+    
+    const nextRunOutDate = getNextRunOutDate(product);
+    const daysUntilRunOut = getDaysUntilRunOut(product);
+    const dailyCost = getDailyCost(product);
+    const monthlyCost = getMonthlyCostEstimate(product);
+    const categoryColor = categoryColors[product.category];
+    
+    document.getElementById('productContent').innerHTML = `
+      <!-- Header -->
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <span class="text-4xl">${categoryIcons[product.category]}</span>
+          <div>
+            <h2 class="text-2xl font-bold">${product.name}</h2>
+            <span class="inline-block mt-1 px-3 py-1 text-sm font-medium bg-category-${categoryColor} text-category-${categoryColor} border-category-${categoryColor} border rounded-full">
+              ${product.category}
+            </span>
+          </div>
+        </div>
+        
+        <a
+          href="/product/edit?id=${product.id}"
+          class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          title="Edit product"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </a>
+      </div>
+      
+      <!-- Status -->
+      <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Next run out</p>
+            <p class="text-lg font-semibold">
+              ${daysUntilRunOut < 0 ? 
+                '<span class="text-red-600">Overdue</span>' : 
+                daysUntilRunOut === 0 ? 
+                '<span class="text-red-600">Today</span>' : 
+                daysUntilRunOut === 1 ? 
+                '<span class="text-orange-600">Tomorrow</span>' : 
+                `<span class="text-gray-900">In ${daysUntilRunOut} days</span>`
+              }
+            </p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Run out date</p>
+            <p class="text-lg font-semibold">${formatDate(nextRunOutDate)}</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Details -->
+      <div class="space-y-4">
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Price</span>
+          <span class="font-semibold">${formatCurrency(product.priceLatest, settings.currency)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Lasts for</span>
+          <span class="font-semibold">${product.lastsDays} ${product.lastsDays === 1 ? 'day' : 'days'}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Last purchased</span>
+          <span class="font-semibold">${formatDate(product.lastPurchasedAt)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Daily cost</span>
+          <span class="font-semibold">${formatCurrency(dailyCost, settings.currency)}</span>
+        </div>
+        
+        <div class="flex justify-between items-center py-3 border-b">
+          <span class="text-gray-600">Monthly estimate</span>
+          <span class="font-semibold">${formatCurrency(monthlyCost, settings.currency)}</span>
+        </div>
+        
+        ${product.notes ? `
+          <div class="py-3">
+            <p class="text-gray-600 mb-2">Notes</p>
+            <p class="text-gray-900">${product.notes}</p>
+          </div>
+        ` : ''}
+      </div>
+      
+      <!-- Actions -->
+      <div class="mt-6 space-y-3">
+        <button
+          onclick="markProductPurchased('${product.id}')"
+          class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Mark as Purchased Today
+        </button>
+        
+        <a
+          href="/"
+          class="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors text-center"
+        >
+          Back to Products
+        </a>
+      </div>
+    `;
+  }
+  
+  // Load product when page loads
+  document.addEventListener('DOMContentLoaded', loadProduct);
+</script>
